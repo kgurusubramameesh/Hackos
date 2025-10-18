@@ -1,2 +1,71 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+import pdfplumber
+import openai
+app = FastAPI(title="AI Medical Report Simplifier")
+openai.api_key = "YOUR_OPENAI_API_KEY"
+TEST_RANGES = {
+    "BP": {"systolic": (90, 120), "diastolic": (60, 80)},
+    "Sugar": {"fasting": (70, 100), "postprandial": (70, 140)},
+    "Thyroid": {"TSH": (0.4, 4.0), "T3": (0.8, 2.0), "T4": (4.5, 12.0)},
+    "Cholesterol": {"total": (125, 200), "HDL": (40, 60), "LDL": (0, 100)}
+}
+def extract_text(file):
+    if file.filename.endswith(".pdf"):
+        with pdfplumber.open(file.file) as pdf:
+            text = ""
+            for page in pdf.pages:
+                text += page.extract_text() + "\n"
+        return text
+    else:
+        return file.file.read().decode()
+
+def analyze_risks(text):
+    import re
+    results = {}
+    for test in TEST_RANGES:
+        results[test] = {}
+        for param in TEST_RANGES[test]:
+            pattern = fr"{param}[:\s]+(\d+\.?\d*)"
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                value = float(match.group(1))
+                low, high = TEST_RANGES[test][param]
+                if value < low:
+                    risk = "Low"
+                    color = "yellow"
+                elif value > high:
+                    risk = "High"
+                    color = "red"
+                else:
+                    risk = "Normal"
+                    color = "green"
+                results[test][param] = {"value": value, "risk": risk, "color": color}
+    return results
+
+def simplify_text(text):
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a medical assistant."},
+            {"role": "user", "content": f"Convert this medical report into simple patient-friendly language:\n{text}"}
+        ]
+    )
+    return response.choices[0].message['content']
+
+@app.post("/upload_report")
+async def upload_report(file: UploadFile = File(...)):
+    text = extract_text(file)
+    simplified = simplify_text(text)
+    risks = analyze_risks(text)
+    return JSONResponse({
+        "simplified_report": simplified,
+        "risks": risks
+    })
+
+@app.post("/simplify_text")
+async def simplify_text_endpoint(text: str):
+    simplified = simplify_text(text)
+    risks = analyze_risks(text)
+    return JSONResponse({
+        "simplified_report": simplified,
+        "risks": risks
+    })
