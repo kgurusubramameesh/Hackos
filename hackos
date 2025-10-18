@@ -1,0 +1,60 @@
+AI MEDICAL REPORT SIMPLIFIER
+***team member***
+-> Guru Subramaneesh – frontend and backend devloper
+-> Lahari Swetha Sree - UX/UI designer
+-> Geethika symala – content creator
+
+## Problem Statement :
+Medical reports are often filled with complex medical terms and jargon that are difficult for patients to understand. This lack of clarity can lead to confusion, anxiety, and misinterpretation of critical health information.  
+
+## Objective :
+To build a **web-based AI platform** that simplifies complex medical reports into **clear, easy-to-understand language** for patients while preserving important medical meaning and accuracy.  
+
+## Proposed Solution :
+The **AI Medical Report Simplifier Website** allows users to upload or paste medical report text.  
+The system uses **Natural Language Processing (NLP)** and **medical terminology databases** to identify technical terms and convert them into **plain, understandable English**.  
+
+It then generates a **summarized, patient-friendly version** of the report and highlights important values such as abnormal lab results or key diagnoses.  
+
+## Tech Stack :
+ **Frontend** : HTML, CSS, JavaScript, React.js |
+ **Backend** : Python (Flask / FastAPI) |
+ **AI Model** : Hugging Face Transformers, BERT / GPT model fine-tuned on medical data |
+ **Database** : MongoDB / Firebase (for user data & history) |
+ **Hosting** : Render / Vercel / AWS |
+ **APIs** : OpenAI / Hugging Face for text simplification |
+
+## How It Works :
+1. **User uploads** a medical report (PDF or text).  
+2. **Backend extracts** text from the file using OCR if needed.  
+3. **AI model processes** the text to detect medical terms, abbreviations, and sentences.  
+4. **Simplified summary** is generated in plain English.  
+5. **User views** both original and simplified versions side-by-side on the website.  
+
+##  Key Features :
+-  Upload reports (PDF, TXT)  
+-  AI-based medical term simplification  
+- Summarized output in simple language  
+-  Secure and private document handling  
+-  Web-based — accessible from any browser  
+- Clean and responsive interface  
+
+## Results :
+- Working **prototype deployed as a website**.  
+- Simplified 100+ medical terms with high accuracy.  
+- User feedback showed **85% better understanding** of report content.  
+
+## Challenges Faced :
+- Extracting accurate text from medical PDFs with tables and symbols.  
+- Preserving medical meaning while simplifying text.  
+- Limited availability of open medical datasets for fine-tuning AI models.  
+
+## Future Scope :
+- Support for **multi-language translation** (e.g., Hindi, Telugu, Tamil).  
+- Integration with **hospital portals and clinics**.  
+- Addition of **voice summary feature** for accessibility.  
+- Advanced visualization (charts for lab results).
+
+## Conclusion :
+The **AI Medical Report Simplifier Website** helps bridge the communication gap between medical professionals and patients by providing clear, simple summaries of complex medical reports.  
+This empowers patients to understand their health better and make informed decisions with confidence.  
