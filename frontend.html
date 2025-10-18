@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediSense AI - Medical Report Simplifier</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-b from-blue-50 to-white min-h-screen flex flex-col items-center p-4">
+  <header class="text-center mb-6">
+    <h1 class="text-4xl font-extrabold text-blue-700 drop-shadow-md">🩺 MediSense AI</h1>
+    <p class="text-gray-700 mt-2 text-lg">AI-Powered Medical Report Simplifier & Health Analyzer</p>
+  </header>
+
+  <main class="w-full max-w-2xl bg-white p-6 rounded-2xl shadow-lg border border-blue-100">
+    <div class="mb-5">
+      <label class="block font-semibold mb-2 text-gray-800">📄 Paste Report Text</label>
+      <textarea id="reportText" class="w-full border border-gray-300 rounded-lg p-3 h-36 focus:ring-2 focus:ring-blue-400 outline-none" placeholder="Paste your medical report text here..."></textarea>
+    </div>
+
+    <div class="mb-5">
+      <label class="block font-semibold mb-2 text-gray-800">📂 Or Upload Report (PDF/TXT)</label>
+      <input type="file" id="reportFile" accept=".pdf,.txt" class="w-full border border-gray-300 p-2 rounded-lg cursor-pointer hover:bg-gray-50"/>
+    </div>
+
+    <button id="analyzeBtn" class="w-full bg-blue-600 text-white py-3 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-all duration-200 shadow-md">
+      🔍 Analyze Report
+    </button>
+  </main>
+
+  <section id="results" class="mt-8 w-full max-w-2xl"></section>
+
+  <footer class="mt-10 text-gray-500 text-sm text-center">
+    <p>© 2025 MediSense AI | Built with 💙 during Hackaverse</p>
+  </footer>
+
+<script>
+const backendURL = "http://127.0.0.1:8000"; // FastAPI backend
+
+document.getElementById("analyzeBtn").addEventListener("click", async () => {
+  const resultsDiv = document.getElementById("results");
+  resultsDiv.innerHTML = "";
+  const reportText = document.getElementById("reportText").value.trim();
+  const fileInput = document.getElementById("reportFile");
+
+  if (!reportText && !fileInput.files.length) {
+    alert("Please paste text or upload a file.");
+    return;
+  }
+
+  resultsDiv.innerHTML = `<p class="text-gray-600 animate-pulse">🩺 Processing your report...</p>`;
+
+  try {
+    let data;
+    if (fileInput.files.length) {
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append("file", file, file.name);
+      const res = await fetch(`${backendURL}/upload_report`, { method: "POST", body: formData });
+      const json = await res.json();
+      data = json.parsed.tests;
+    } else {
+      const res = await fetch(`${backendURL}/simplify`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ report_text: reportText })
+      });
+      const json = await res.json();
+      data = json.tests;
+    }
+
+    resultsDiv.innerHTML = "";
+    for (const [key, val] of Object.entries(data)) {
+      const colorMap = { green: "bg-green-100 border-green-400", yellow: "bg-yellow-100 border-yellow-400", red: "bg-red-100 border-red-400" };
+      const emojiMap = { green: "🟢", yellow: "🟡", red: "🔴" };
+      const colorClass = colorMap[val.risk_color] || "bg-gray-100 border-gray-300";
+      const emoji = emojiMap[val.risk_color] || "⚪";
+
+      const div = document.createElement("div");
+      div.className = `border-l-4 ${colorClass} p-4 rounded-lg mb-4 shadow-sm`;
+      div.innerHTML = `
+        <h3 class="text-lg font-bold mb-1">${emoji} ${key.replace(/_/g, " ").toUpperCase()}</h3>
+        <p><strong>Value:</strong> ${val.value ?? "N/A"} ${val.unit ?? ""}</p>
+        ${val.normal_range ? `<p><strong>Normal Range:</strong> ${val.normal_range}</p>` : ""}
+        <p><strong>Status:</strong> ${val.explanation}</p>
+        ${val.doctor_suggestion ? `<p class="italic mt-1">💡 ${val.doctor_suggestion}</p>` : ""}
+      `;
+      resultsDiv.appendChild(div);
+    }
+
+    if (Object.keys(data).length === 0) {
+      resultsDiv.innerHTML = `<p class="text-gray-500">No recognizable test values found. Please check your report format.</p>`;
+    }
+
+  } catch (err) {
+    console.error(err);
+    resultsDiv.innerHTML = `<p class="text-red-500">⚠️ Error processing report. Please ensure the FastAPI backend is running.</p>`;
+  }
+});
+</script>
+</body>
+</html>
