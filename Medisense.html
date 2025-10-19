@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediSense AI - Report & Prescription Simplifier</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<style>
+body { font-family: 'Inter', sans-serif; }
+.spinner {
+  border: 4px solid rgba(0,0,0,0.1);
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  border-left-color: #4f46e5;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+
+/* Draggable modal */
+#resultModal {
+  display: none;
+  position: fixed;
+  top: 50px; left: 50%;
+  transform: translateX(-50%);
+  max-width: 90%;
+  width: 800px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  z-index: 1000;
+  overflow: hidden;
+  cursor: move;
+  border-left: 6px solid #4f46e5;
+  transition: transform 0.3s ease;
+}
+#modalHeader { background:#4f46e5; color:white; padding: 12px 16px; font-weight:bold; display:flex; justify-content:space-between; align-items:center; }
+#modalContent { padding: 20px; max-height:70vh; overflow-y:auto; }
+
+/* Animated sections */
+.section {
+  border-left: 4px solid #4f46e5;
+  background-color: #eef2ff;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  transition: transform 0.2s;
+}
+.section:hover { transform: scale(1.02); }
+
+/* Shake animation for boxes */
+@keyframes shake {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+  100% { transform: translateX(0); }
+}
+
+.hover-shake:hover {
+  animation: shake 0.5s ease-in-out;
+}
+</style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-white to-blue-50 min-h-screen flex flex-col items-center p-4 sm:p-6 lg:p-8">
+
+<div class="w-full max-w-6xl mx-auto">
+<header class="text-center mb-8">
+<h1 class="text-4xl sm:text-5xl font-extrabold text-indigo-700 drop-shadow-md">🩺 MediSense AI</h1>
+<p class="text-gray-600 mt-2 text-lg">Understand Your Medical Report & Doctor’s Prescription Easily</p>
+</header>
+
+<main class="w-full p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-200">
+<div id="message-box" class="hidden p-4 mb-4 rounded-lg"></div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Left: Lab Report -->
+<div class="hover-shake bg-gradient-to-br from-purple-100 via-purple-200 to-purple-50 p-4 rounded-xl shadow-md">
+<h2 class="text-xl font-bold text-indigo-700 mb-3">📄 Lab Report</h2>
+<textarea id="reportText" class="w-full border border-gray-300 rounded-lg p-3 h-40 focus:ring-2 focus:ring-indigo-500 outline-none bg-white" placeholder="Paste your lab report text here..."></textarea>
+<div class="mt-4">
+<label for="reportFile" class="block font-semibold mb-2 text-gray-800">Or Upload Report (PDF/TXT)</label>
+<input type="file" id="reportFile" accept=".pdf,.txt" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 transition-colors"/>
+</div>
+</div>
+
+<!-- Right: Doctor's Prescription -->
+<div class="hover-shake bg-gradient-to-br from-orange-100 via-orange-200 to-orange-50 p-4 rounded-xl shadow-md">
+<h2 class="text-xl font-bold text-indigo-700 mb-3">💊 Doctor’s Prescription</h2>
+<textarea id="prescriptionText" class="w-full border border-gray-300 rounded-lg p-3 h-40 focus:ring-2 focus:ring-indigo-500 outline-none bg-white" placeholder="Paste doctor's notes here..."></textarea>
+<div class="mt-4">
+<label for="prescriptionFile" class="block font-semibold mb-2 text-gray-800">Or Upload Prescription (Image/PDF/TXT)</label>
+<input type="file" id="prescriptionFile" accept=".jpg,.jpeg,.png,.pdf,.txt" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 transition-colors"/>
+</div>
+</div>
+</div>
+
+<div class="mt-10 text-center">
+<button id="analyzeBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg transition-all duration-300 focus:outline-none">
+🔍 Simplify & Analyze
+</button>
+</div>
+</main>
+
+<footer class="mt-12 text-gray-500 text-sm text-center">
+<p>Disclaimer: MediSense AI provides simplified information. Always follow your doctor's advice.</p>
+</footer>
+</div>
+
+<!-- Draggable modal -->
+<div id="resultModal">
+<div id="modalHeader">Analysis Results <span id="closeModal">✖</span></div>
+<div id="modalContent">
+<div class="flex flex-col items-center p-8"><div class="spinner"></div><p class="mt-4 text-gray-600 animate-pulse">Analyzing...</p></div>
+</div>
+</div>
+
+<script>
+const apiKey="AIzaSyAg0l8r08CD83rZpcFlnAS-NIZXE2sDKRY";
+
+function showMessage(msg,type='error'){
+  const box=document.getElementById('message-box');
+  box.textContent=msg;
+  box.className=`p-4 mb-4 rounded-lg ${type==='error'?'bg-red-100 text-red-700':'bg-blue-100 text-blue-700'}`;
+  box.classList.remove('hidden');
+}
+function hideMessage(){document.getElementById('message-box').classList.add('hidden');}
+
+async function readPDF(file){
+  const arrayBuffer=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+  let text="";
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    text+=content.items.map(it=>it.str).join(" ")+"\n";
+  }
+  return text;
+}
+
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result.split(',')[1]);
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Draggable modal
+const modal=document.getElementById('resultModal');
+const modalHeader=document.getElementById('modalHeader');
+const closeModal=document.getElementById('closeModal');
+closeModal.onclick=()=>modal.style.display='none';
+
+let offsetX=0, offsetY=0, isDown=false;
+modalHeader.onmousedown=function(e){
+  isDown=true;
+  offsetX=modal.offsetLeft-e.clientX;
+  offsetY=modal.offsetTop-e.clientY;
+}
+document.onmouseup=function(){ isDown=false; }
+document.onmousemove=function(e){
+  if(!isDown) return;
+  modal.style.left=e.clientX+offsetX+'px';
+  modal.style.top=e.clientY+offsetY+'px';
+}
+
+document.getElementById('analyzeBtn').addEventListener('click', async()=>{
+hideMessage();
+modal.style.display='block';
+document.getElementById('modalContent').innerHTML=`<div class="flex flex-col items-center p-8"><div class="spinner"></div><p class="mt-4 text-gray-600 animate-pulse">Analyzing report & prescription...</p></div>`;
+
+const reportText=document.getElementById('reportText').value.trim();
+const prescriptionText=document.getElementById('prescriptionText').value.trim();
+const reportFile=document.getElementById('reportFile').files[0];
+const prescriptionFile=document.getElementById('prescriptionFile').files[0];
+
+if(!reportText&&!reportFile&&!prescriptionText&&!prescriptionFile){ showMessage("Please upload or paste at least one report or prescription."); modal.style.display='none'; return;}
+
+let reportContent=reportText;
+let prescriptionContent=prescriptionText;
+
+if(reportFile){ reportContent=reportFile.type==="application/pdf"?await readPDF(reportFile):await reportFile.text(); }
+
+let imageData=null;
+if(prescriptionFile){
+  if(prescriptionFile.type.startsWith("image/")) imageData=await fileToBase64(prescriptionFile);
+  else if(prescriptionFile.type==="application/pdf") prescriptionContent=await readPDF(prescriptionFile);
+  else prescriptionContent=await prescriptionFile.text();
+}
+
+const systemPrompt=`You are MediSense AI, a digital medical assistant.
+You will receive a lab report and a doctor’s prescription (image or text). 
+Your tasks:
+1️⃣ Summarize the lab report in simple words.
+2️⃣ Explain the prescription: describe each medicine and what it’s for.
+3️⃣ Combine them into a clear summary for a patient.
+4️⃣ Use sections:
+   - 🧾 General Report Summary
+   - 💊 Medicine Explanation
+   - ⚠️ Health Tips & Precautions`;
+
+const apiUrl=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+const parts=[{text:`Lab Report:\n${reportContent}\n\nDoctor Prescription:\n${prescriptionContent}`}];
+if(imageData) parts.push({inlineData:{mimeType:prescriptionFile.type,data:imageData}});
+
+const payload={ contents:[{parts}], systemInstruction:{parts:[{text:systemPrompt}]} };
+
+try{
+const res=await fetch(apiUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+const data=await res.json();
+const output=data.candidates?.[0]?.content?.parts?.[0]?.text || "No analysis available.";
+
+// Create colored, animated sections
+const htmlOutput=output.split('\n\n').map(section=>{
+  return `<div class="section animate-[fadeIn_0.5s_ease] whitespace-pre-wrap">${section}</div>`;
+}).join('');
+
+document.getElementById('modalContent').innerHTML=htmlOutput;
+}catch(e){ console.error(e); showMessage("Error during analysis."); modal.style.display='none'; }
+});
+</script>
+</body>
+</html>
